@@ -15,7 +15,7 @@ services:
     name: loan-risk-frontend
     env: static
     buildCommand: cd frontend && npm install && npm run build
-    publish: frontend/dist
+    publishDir: frontend/dist
     envVars:
       - key: VITE_API_URL
         value: https://loan-risk-api.onrender.com
