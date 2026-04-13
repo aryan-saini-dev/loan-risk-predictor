@@ -33,7 +33,8 @@ function App() {
     setResult(null);
 
     try {
-      const response = await axios.post('http://localhost:8000/predict', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const response = await axios.post(`${apiUrl}/predict`, {
         age: parseInt(formData.age),
         income: parseFloat(formData.income),
         loan_amount: parseFloat(formData.loan_amount),
