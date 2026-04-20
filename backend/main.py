@@ -11,7 +11,7 @@ app = FastAPI(title="Loan Default Risk Prediction API")
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://loan-risk-predictor-30jopvwda-xyaminokiritoxs-projects.vercel.app/"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
