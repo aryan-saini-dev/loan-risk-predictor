@@ -214,6 +214,136 @@ curl -X POST "http://localhost:8000/predict" \
 - Axios
 - Lucide React
 
+---
+
+## Deployment Guide
+
+### Overview
+This project uses a split deployment:
+- **Backend**: Render (Python FastAPI)
+- **Frontend**: Vercel (React static site)
+
+### Step 1: Prepare the Code
+
+1. Ensure all changes are committed to GitHub
+2. Verify the backend uses `allow_origins=["*"]` for CORS
+3. Verify the backend uses `os.environ.get("PORT", 8000)` for port configuration
+4. Verify the frontend uses `import.meta.env.VITE_API_URL` for the API URL
+
+### Step 2: Deploy Backend to Render
+
+1. Go to [render.com](https://render.com) and sign up/login
+2. Click **"New +"** → **"Web Service"**
+3. Connect your GitHub repository
+4. Configure the service:
+
+   **Name**: `loan-risk-api` (or any name)
+
+   **Language**: `Python`
+
+   **Branch**: `main`
+
+   **Region**: Choose your preferred region
+
+   **Root Directory**: `backend`
+
+   **Build Command**: `pip install -r requirements.txt`
+
+   **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+
+5. **Important**: Do NOT manually add a `PORT` environment variable - Render provides `$PORT` automatically
+6. Click **"Deploy"**
+
+7. After deployment, copy your backend URL (e.g., `https://loan-risk-api-ai1c.onrender.com`)
+
+**Troubleshooting Render**:
+- If you see "no open ports detected", ensure you're using `$PORT` in the start command
+- If deployment fails, click "Manual Deploy" → "Deploy latest commit" after pushing changes
+- Free tier spins down after 15 minutes of inactivity - first request may take 30-50 seconds
+
+### Step 3: Deploy Frontend to Vercel
+
+1. Go to [vercel.com](https://vercel.com) and sign up/login
+2. Click **"Add New Project"**
+3. Import your GitHub repository
+4. Configure the project:
+
+   **Name**: `loan-risk-frontend` (or any name)
+
+   **Framework Preset**: `Vite`
+
+   **Root Directory**: `frontend`
+
+   **Build Command**: `npm run build`
+
+   **Output Directory**: `dist`
+
+   **Install Command**: `npm install`
+
+5. **Add Environment Variable**:
+   - Go to **Settings** → **Environment Variables**
+   - Add: `VITE_API_URL` = `https://loan-risk-api-ai1c.onrender.com` (use your actual backend URL)
+   - Select **Production** environment
+   - Click **Save**
+
+6. Click **"Deploy"**
+
+7. After deployment, copy your frontend URL
+
+**Troubleshooting Vercel**:
+- If build fails with "command not found", ensure build command is `npm run build`
+- If you see 404 errors, ensure the API URL environment variable is set correctly
+- Vercel auto-deploys on push to main branch
+
+### Step 4: Verify Deployment
+
+1. Test the backend directly:
+   ```
+   curl https://your-backend-url.onrender.com/
+   ```
+   Should return: `{"message": "Loan Default Risk Prediction API", "status": "running"}`
+
+2. Test the frontend:
+   - Open your Vercel URL
+   - Fill out the form
+   - Click "Predict Risk"
+   - Should show loading state, then results
+
+### Step 5: Update CORS (if needed)
+
+If you see CORS errors in the browser console:
+
+1. Update `backend/main.py`:
+   ```python
+   app.add_middleware(
+       CORSMiddleware,
+       allow_origins=["*"],  # Allow all origins
+       allow_credentials=True,
+       allow_methods=["*"],
+       allow_headers=["*"],
+   )
+   ```
+
+2. Push changes to GitHub
+3. Redeploy backend on Render (Manual Deploy)
+
+### Important Notes
+
+**Security**:
+- The API URL is visible in browser DevTools (unavoidable for frontend apps)
+- Never commit API keys or secrets to GitHub
+- Use environment variables for sensitive data
+
+**Free Tier Limitations**:
+- **Render**: Spins down after 15 min inactivity - first request takes 30-50 seconds
+- **Vercel**: Static sites stay awake - instant loading
+- Both have bandwidth limits on free tier
+
+**Updating Deployments**:
+- Push changes to GitHub
+- Render: Click "Manual Deploy" → "Deploy latest commit"
+- Vercel: Auto-deploys on push, or click "Redeploy" in dashboard
+
 ## License
 
 This project is for educational purposes.
