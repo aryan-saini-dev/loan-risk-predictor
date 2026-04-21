@@ -20,95 +20,96 @@ This guide walks you through building the actual model used in this project. You
 A binary classification model that predicts whether a loan applicant will default (1) or not (0) based on their financial profile.
 
 ### The Actual Model
-This project uses **synthetic data** generated in `retrain_model.py` with:
+This project uses **real data** from `realistic_credit_risk_dataset.csv` with:
 - **1000 samples** of loan applications
 - **7 features** per applicant
 - **Logistic Regression** classifier
-- **93.8% accuracy** on training data
+- **88% accuracy** on training data
 
-### Why Synthetic Data?
-- No access to real loan data (privacy concerns)
-- Allows us to test the full pipeline
-- Demonstrates the complete ML workflow
-- Easy to modify and experiment
+### Why Real Data?
+- More realistic and representative
+- Better demonstrates real-world ML workflow
+- Balanced classes (504 defaults, 496 non-defaults)
+- Actual patterns in financial data
 
 **Expected Output**: When you run `retrain_model.py`, you'll see:
 ```
+Loaded 1000 samples from realistic_credit_risk_dataset.csv
+Dataset Info:
+<class 'pandas.core.frame.DataFrame'>
+RangeIndex: 1000 entries, 0 to 999
+Data columns (total 8 columns):
+ #   Column            Non-Null Count  Dtype
+---  ------            --------------  -----
+ 0   Age               1000 non-null   float64
+ 1   Income            1000 non-null   float64
+ 2   Loan_Amount       1000 non-null   float64
+ 3   Credit_Score      1000 non-null   float64
+ 4   Employment_Years  1000 non-null   int64
+ 5   Education_Level   1000 non-null   int64
+ 6   Housing_Status    1000 non-null   int64
+ 7   Default           1000 non-null   int64
+
+Class Distribution:
+Default
+1    504
+0    496
 Model trained successfully
-Model accuracy: 0.9380
+Model accuracy: 0.8800
 Model and scaler saved successfully with joblib
 ```
 
 ---
 
-## Generating Synthetic Data
+## Loading the Dataset
 
 ### The Code (from `retrain_model.py`)
 
 ```python
-import numpy as np
 import pandas as pd
+import os
 
-# Set random seed for reproducibility
-np.random.seed(42)
-n_samples = 1000
+# Get the parent directory (project root) to find the CSV file
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+csv_path = os.path.join(BASE_DIR, 'realistic_credit_risk_dataset.csv')
 
-# Generate features
-age = np.random.randint(18, 75, n_samples)
-income = np.random.normal(60000, 30000, n_samples)
-income = np.maximum(income, 0)  # Ensure non-negative
-loan_amount = np.random.normal(30000, 15000, n_samples)
-loan_amount = np.maximum(loan_amount, 0)  # Ensure non-negative
-credit_score = np.random.normal(650, 100, n_samples)
-credit_score = np.clip(credit_score, 300, 850)
-employment_years = np.random.randint(0, 40, n_samples)
-education_level = np.random.randint(0, 4, n_samples)
-housing_status = np.random.randint(0, 3, n_samples)
+df = pd.read_csv(csv_path)
+print(f"Loaded {len(df)} samples from {csv_path}")
+
+# Display basic statistics
+print("\nDataset Info:")
+print(df.info())
+print("\nClass Distribution:")
+print(df['Default'].value_counts())
 ```
 
 ### What This Does
 
-**`np.random.seed(42)`**: Ensures we get the same "random" data every time. This is crucial for reproducibility - if you run the code twice, you get identical results.
+**`os.path.dirname(os.path.dirname(...))`**: Navigates up two directories from the backend folder to the project root where the CSV file is located.
 
-**Age**: Random integers between 18-75 (typical working age range)
+**`pd.read_csv()`**: Loads the CSV file into a pandas DataFrame for easy manipulation.
 
-**Income**: Normal distribution with:
-- Mean: $60,000
-- Standard deviation: $30,000
-- Minimum: $0 (can't have negative income)
+**`df.info()`**: Shows the structure of the dataset - column names, data types, and non-null counts.
 
-**Loan Amount**: Normal distribution with:
-- Mean: $30,000
-- Standard deviation: $15,000
-- Minimum: $0
-
-**Credit Score**: Normal distribution with:
-- Mean: 650
-- Standard deviation: 100
-- Range: 300-850 (clipped to valid credit score range)
-
-**Employment Years**: Random integers between 0-40 years
-
-**Education Level**: Random integers 0-3:
-- 0 = High School
-- 1 = Bachelors
-- 2 = Masters
-- 3 = PhD
-
-**Housing Status**: Random integers 0-2:
-- 0 = Rent
-- 1 = Mortgage
-- 2 = Own
+**`df['Default'].value_counts()`**: Shows how many samples are in each class (defaults vs non-defaults).
 
 ### Expected Data Sample
 
-After running this, you'll have 1000 rows. Here's what the first few look like:
+The CSV contains 1000 rows with real-looking data. Here's what the first few look like:
 
-| Age | Income | Loan_Amount | Credit_Score | Employment_Years | Education_Level | Housing_Status |
-|-----|--------|-------------|--------------|------------------|-----------------|----------------|
-| 56  | 53847  | 34732       | 651          | 8                | 2               | 0              |
-| 18  | 84528  | 58216       | 542          | 25               | 2               | 2              |
-| 47  | 25201  | 18626       | 654          | 3                | 2               | 1              |
+| Age | Income | Loan_Amount | Credit_Score | Employment_Years | Education_Level | Housing_Status | Default |
+|-----|--------|-------------|--------------|------------------|-----------------|----------------|---------|
+| 37.4 | 25418 | 39061 | 301 | 4 | 0 | 0 | 1 |
+| 33.1 | 130933 | 23043 | 807 | 26 | 1 | 1 | 0 |
+| 62.0 | 115593 | 26551 | 641 | 25 | 1 | 2 | 0 |
+
+### Class Distribution
+
+The dataset is nearly balanced:
+- **504 defaults** (1)
+- **496 non-defaults** (0)
+
+This balance is ideal for training a fair model that doesn't bias toward one class.
 
 ---
 
@@ -136,77 +137,6 @@ These are standard features used in real-world loan approval decisions:
 - **Age**: Life stage and experience
 - **Education**: Correlates with earning potential
 - **Housing**: Asset ownership indicates financial stability
-
----
-
-## Creating the Target Variable
-
-### The Risk Score Formula
-
-```python
-# Create target variable based on features
-default = np.zeros(n_samples)
-
-# Higher risk if: low credit score, high loan/income ratio, short employment
-risk_score = (
-    (850 - credit_score) / 550 * 0.4 +      # Credit score impact (40% weight)
-    (loan_amount / (income + 1)) * 0.3 +    # Loan-to-income ratio (30% weight)
-    (1 - employment_years / 40) * 0.2 +      # Employment stability (20% weight)
-    (3 - education_level) / 3 * 0.1          # Education level (10% weight)
-)
-default[risk_score > 0.5] = 1
-```
-
-### How the Risk Score Works
-
-**Formula Breakdown**:
-```
-Risk Score = 0.4 × (Credit Factor) + 0.3 × (Loan/Income Factor) + 
-             0.2 × (Employment Factor) + 0.1 × (Education Factor)
-```
-
-**Credit Factor** (40% weight):
-- `(850 - credit_score) / 550`
-- Credit score 850 → factor = 0 (lowest risk)
-- Credit score 300 → factor = 1 (highest risk)
-- **Why**: Credit score is the most important factor
-
-**Loan/Income Factor** (30% weight):
-- `loan_amount / (income + 1)`
-- Higher ratio = higher risk
-- Example: $50K loan / $50K income = 1.0 (high risk)
-- Example: $10K loan / $100K income = 0.1 (low risk)
-- **Why**: Measures debt burden relative to income
-
-**Employment Factor** (20% weight):
-- `(1 - employment_years / 40)`
-- 40 years employment → factor = 0 (lowest risk)
-- 0 years employment → factor = 1 (highest risk)
-- **Why**: Job stability matters
-
-**Education Factor** (10% weight):
-- `(3 - education_level) / 3`
-- PhD (3) → factor = 0 (lowest risk)
-- High School (0) → factor = 1 (highest risk)
-- **Why**: Education correlates with financial literacy
-
-### Threshold
-
-```python
-default[risk_score > 0.5] = 1
-```
-
-If `risk_score > 0.5`, we label as "Will Default" (1). Otherwise "Won't Default" (0).
-
-**Why 0.5?** It's a balanced threshold - if the weighted risk factors exceed 50%, we consider it high risk.
-
-### Expected Output
-
-With this formula, you'll see approximately:
-- 30-40% of applicants labeled as "Default" (1)
-- 60-70% labeled as "No Default" (0)
-
-This creates a realistic class imbalance - more people don't default than do, which matches real-world data.
 
 ---
 
@@ -306,13 +236,13 @@ model.fit(X_scaled, y)
 
 ```
 Model trained successfully
-Model accuracy: 0.9380
+Model accuracy: 0.8800
 ```
 
-**What 93.8% Accuracy Means**:
-- The model correctly predicts 938 out of 1000 training samples
-- This is high because we're testing on the same data we trained on
-- In production, we'd use train/test split for real evaluation
+**What 88% Accuracy Means**:
+- The model correctly predicts 880 out of 1000 training samples
+- This is realistic accuracy for real financial data
+- The 12% error rate reflects the inherent uncertainty in loan default prediction
 
 ### Why Logistic Regression?
 
@@ -457,19 +387,19 @@ This creates two files in your directory:
 
 ### The Complete Pipeline
 
-1. **Generated 1000 synthetic loan applications** with realistic features
-2. **Created a risk score formula** to label defaults (weighted by credit score, loan/income ratio, employment, education)
+1. **Loaded 1000 real loan applications** from CSV file
+2. **Verified balanced classes** (504 defaults, 496 non-defaults)
 3. **Scaled features using RobustScaler** to handle outliers
-4. **Trained Logistic Regression** with class weighting for imbalance
-5. **Achieved 93.8% accuracy** on training data
+4. **Trained Logistic Regression** with class weighting for balance
+5. **Achieved 88% accuracy** on training data
 6. **Saved model and scaler** for deployment
 
 ### Key Takeaways
 
-- **Synthetic data** lets you test ML pipelines without real data
+- **Real data** provides more realistic model performance
 - **Feature scaling** is crucial when features have different ranges
 - **RobustScaler** handles outliers better than StandardScaler
-- **Class weighting** prevents the model from ignoring minority classes
+- **Class weighting** ensures fair predictions for both classes
 - **joblib** is the preferred way to save sklearn models
 
 ### Next Steps for Real Data
